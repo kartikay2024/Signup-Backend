@@ -322,34 +322,25 @@ app.post("/api/auth/google", async (req, res) => {
       }
     );
 
+
     const existingUser = checkUserRes.data.data?.find(
       (user) => user.admin_email.toLowerCase() === userEmail.toLowerCase()
     );
 
     if (existingUser) {
-      // USER EXISTS - LOGIN FLOW
-      const appToken = jwt.sign(
-        {
-          userId: existingUser.admin_id,
-          email: userEmail,
-        },
-        process.env.JWT_SECRET || "your-secret-key-here",
-        { expiresIn: "7d" }
-      );
-
       return res.json({
-        success: true,
-        isNewUser: false,
-        user: {
-          id: existingUser.admin_id,
-          name: existingUser.admin_name,
-          email: userEmail,
-          picture: userPicture,
-        },
-        token: appToken,
+        data: [
+          {
+            user_id: existingUser._id,
+            user_fullname: existingUser.admin_name,
+            admin_email: existingUser.admin_email,
+            login_type: "google",
+            profile_image: existingUser.profile_image || "",
+            is_registered: existingUser.is_registered || 1,
+          },
+        ],
       });
     } else {
-      // NEW USER - SIGNUP FLOW
       const signupRes = await axios.post(
         process.env.BASE_URL + "signup",
         {
@@ -377,25 +368,24 @@ app.post("/api/auth/google", async (req, res) => {
       if (signupRes.data.success) {
         const newUser = signupRes.data.user || signupRes.data.data;
 
-        const appToken = jwt.sign(
-          {
-            userId: newUser.admin_id || newUser.id,
-            email: userEmail,
-          },
-          process.env.JWT_SECRET || "your-secret-key-here",
-          { expiresIn: "7d" }
-        );
+        // we nee to send user details in the response (if login_type is google else we need to send what we send currently
+
+        //   {"success":1,"msg":"created succesfully"}
+        // )
+
+        const savedUser = newUser;
 
         return res.json({
-          success: true,
-          isNewUser: true,
-          user: {
-            id: newUser.admin_id || newUser.id,
-            name: userName,
-            email: userEmail,
-            picture: userPicture,
-          },
-          token: appToken,
+          data: [
+            {
+              user_id: savedUser._id,
+              user_fullname: savedUser.admin_name,
+              admin_email: savedUser.admin_email,
+              login_type: "google",
+              profile_image: savedUser.profile_image || "",
+              is_registered: savedUser.is_registered || 1,
+            },
+          ],
         });
       } else {
         throw new Error("Failed to create user");
